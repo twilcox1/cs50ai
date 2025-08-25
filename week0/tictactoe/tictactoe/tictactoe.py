@@ -4,6 +4,7 @@ Tic Tac Toe Player
 
 import math
 import copy
+import random
 
 X = "X"
 O = "O"
@@ -30,7 +31,7 @@ def actions(board):
     possible_moves = set()
     for i, row in enumerate(board):
         for j, cell in enumerate(row):
-            if cell is not None:
+            if cell is None:
                 possible_moves.add((i, j))
     return possible_moves
 
@@ -41,6 +42,7 @@ def result(board, action):
     deep_board = copy.deepcopy(board)
     row, cell = action
     deep_board[row][cell] = current
+    return deep_board
 
 
 
@@ -76,10 +78,40 @@ def utility(board):
 
 
 def minimax(board):
-    """
-    Returns the optimal action for the current player on the board.
-    """
-    raise NotImplementedError
+    currentplayer = player(board)
+    scores = []
+    if terminal(board):
+        return None
+    allactions = actions(board)
+    if not allactions:
+        return None
+    for action in allactions:
+        newboard = result(board, action)
+        if terminal(newboard):
+            score = utility(newboard)
+        else:
+            _ = newboard
+            while not terminal(_):
+                move = minimax(_)
+                _ = result(_, move)
+            score = utility(_)
+        scores.append((action, score))
+    random.shuffle(scores)
+
+    if currentplayer == X:
+        return max(scores, key=lambda x: x[1])[0]
+    else:
+        return min(scores, key=lambda x: x[1])[0]
+    
+ 
+        
+
+    
+
+    
+
+
+
 
 def check_column(board):
     size = len(board)
