@@ -97,6 +97,9 @@ def minimax(board):
             score = utility(_)
         scores.append((action, score))
     random.shuffle(scores)
+    for one in scores:
+        if one[1] == 1:
+            print(one)
 
     if currentplayer == X:
         return max(scores, key=lambda x: x[1])[0]
