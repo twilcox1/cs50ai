@@ -4,6 +4,8 @@ import re
 import sys
 import itertools
 import math
+import copy
+
 
 DAMPING = 0.85
 SAMPLES = 10000
@@ -52,7 +54,7 @@ def crawl(directory):
 
 def transition_model(corpus, page, damping_factor):
     all_choices = {item for key, value in corpus.items() for item in itertools.chain([key], value)}
-    linked_choices = {item for item in corpus[page] if len(corpus[page])}
+    linked_choices = {item for item in corpus[page]} if len(corpus[page]) > 0 else all_choices
     print(all_choices)
     print(linked_choices)
     jump = (1 - damping_factor) / len(all_choices)
@@ -94,7 +96,7 @@ def sample_pagerank(corpus, damping_factor, n):
 
     results = {key: value / n for key, value in results.items()}
     if math.isclose(sum(results.values()), 1):
-        print(results)
+        return results
     else:
         print("ERROR")
     
@@ -112,24 +114,36 @@ def iterate_pagerank(corpus, damping_factor):
     print('were in')
     all_choices = {item for key, value in corpus.items() for item in itertools.chain([key], value)}
     all_choices = list(all_choices)
-    weights = [1/len(all_choices) for _ in enumerate(all_choices)]
+    weights = [1/len(all_choices) for _ in all_choices]
     jump = (1 - damping_factor) / len(all_choices)
     print(jump)
-    results = {key: value for key in all_choices for value in weights}
+    results = {key: value for key, value in zip(all_choices, weights)}
     print(results)
-    counter = 0
-    while counter < 5:
-        counter += 1
+    while True:
+        results_copy = results.copy()
+        converged = True
         for i in all_choices:
-            linked_from = {parentpage for parentpage, childpages in corpus.items() if i in childpages}
-            if not linked_from:
-                linked_from = all_choices
-            outlinks = [value for key, value in corpus.items() if key in linked_from]
-            print("~~~",outlinks,"~~~")
-            page_rank_i = ((sum([value for key, value in results.items() if key in linked_from]) / len(outlinks)) * damping_factor) + jump
+            linked_from = {parentpage for parentpage, childpages in corpus.items() if i in childpages or len(childpages) == 0}
+            rank_share = 0
+            for _ in linked_from:
+                denominator = len(corpus[_]) if len(corpus[_]) > 0 else len(all_choices)
+                rank_share += (results[_] / denominator)
+            
+            print("~~~",rank_share,"~~~")
+            page_rank_i = (rank_share * damping_factor) + jump
             print(i, linked_from)
             print(page_rank_i)
-            results[i] = page_rank_i
+            results_copy[i] = page_rank_i
+        results_difference = [abs(results[page] - results_copy[page]) for page in results.keys()]
+        results = results_copy.copy()
+        for _ in results_difference:
+            if _ > 0.001:
+                converged = False
+            if converged:
+                return results
+
+
+        
 
 
 
