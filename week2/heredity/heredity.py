@@ -1,6 +1,8 @@
 import csv
 import itertools
 import sys
+from collections import deque
+import math
 
 PROBS = {
 
@@ -43,6 +45,7 @@ def main():
     if len(sys.argv) != 2:
         sys.exit("Usage: python heredity.py data.csv")
     people = load_data(sys.argv[1])
+    print(people)
 
     # Keep track of gene and trait probabilities for each person
     probabilities = {
@@ -111,7 +114,7 @@ def load_data(filename):
                 "mother": row["mother"] or None,
                 "father": row["father"] or None,
                 "trait": (True if row["trait"] == "1" else
-                          False if row["trait"] == "0" else None)
+                        False if row["trait"] == "0" else None)
             }
     return data
 
@@ -129,35 +132,67 @@ def powerset(s):
 
 
 def joint_probability(people, one_gene, two_genes, have_trait):
-    """
-    Compute and return a joint probability.
+    print(one_gene)
+    print(two_genes)
+    mutation = PROBS["mutation"]
+    data = dict()
+    for person in people:
+        print(person)
+        gene_count = 2 if person in two_genes else 1 if person in one_gene else 0
+        print(gene_count)
+        trait_value = True if person in have_trait else False
+        print(trait_value)
+        has_parents = True if people[person]["mother"] or people[person]["father"] else False
+        print("hasparents", has_parents)
+        if not has_parents:
+            person_prob = PROBS["gene"][gene_count]
+            trait_prob = PROBS["trait"][gene_count][trait_value]
+            results = person_prob * trait_prob
+            data[person] = results
+            continue
+        mother = people[person]["mother"]
+        father = people[person]["father"]
+        mother_prob = 0.5 if mother in one_gene else (1 - mutation) if mother in two_genes else mutation
+        father_prob = 0.5 if father in one_gene else (1 - mutation) if father in two_genes else mutation
+        if gene_count == 0:
+            child_prob = (1 - mother_prob) * (1 - father_prob)
+        elif gene_count == 1:
+            child_prob = mother_prob * (1 - father_prob) + father_prob * (1 - mother_prob)
+        elif gene_count == 2:
+            child_prob = mother_prob * father_prob
+        child_prob *= PROBS["trait"][gene_count][trait_value]
+        data[person] = child_prob
 
-    The probability returned should be the probability that
-        * everyone in set `one_gene` has one copy of the gene, and
-        * everyone in set `two_genes` has two copies of the gene, and
-        * everyone not in `one_gene` or `two_gene` does not have the gene, and
-        * everyone in set `have_trait` has the trait, and
-        * everyone not in set` have_trait` does not have the trait.
-    """
-    raise NotImplementedError
+    apple = math.prod(data.values())
+    print(apple)
+    return(apple)
 
 
 def update(probabilities, one_gene, two_genes, have_trait, p):
-    """
-    Add to `probabilities` a new joint probability `p`.
-    Each person should have their "gene" and "trait" distributions updated.
-    Which value for each distribution is updated depends on whether
-    the person is in `have_gene` and `have_trait`, respectively.
-    """
-    raise NotImplementedError
+    for person in probabilities:
+        gene_count = 1 if person in one_gene else 2 if person in two_genes else 0
+        has_trait = True if person in have_trait else False
+        probabilities[person]["gene"][gene_count] += p
+        probabilities[person]["trait"][has_trait] += p
 
 
 def normalize(probabilities):
-    """
-    Update `probabilities` such that each probability distribution
-    is normalized (i.e., sums to 1, with relative proportions the same).
-    """
-    raise NotImplementedError
+    for person in probabilities:
+        gene_check = True if sum(probabilities[person]["gene"].values()) == 1 else False
+        trait_check = True if sum(probabilities[person]["trait"].values()) == 1 else False
+        if gene_check and trait_check:
+            continue
+        if not gene_check:
+            total_gene = sum(probabilities[person]["gene"].values())
+            for gene, value in probabilities[person]["gene"].items():
+                probabilities[person]["gene"][gene] = (value / total_gene)
+        if not trait_check:
+            total_trait = sum(probabilities[person]["trait"].values())
+            for trait, value in probabilities[person]["trait"].items():
+                probabilities[person]["trait"][trait] = (value / total_trait)
+        
+
+
 
 
 if __name__ == "__main__":
