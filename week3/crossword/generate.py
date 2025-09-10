@@ -1,6 +1,8 @@
 import sys
 
 from crossword import *
+from itertools import permutations, combinations
+from collections import deque
 
 
 class CrosswordCreator():
@@ -94,57 +96,76 @@ class CrosswordCreator():
         return self.backtrack(dict())
 
     def enforce_node_consistency(self):
-        """
-        Update `self.domains` such that each variable is node-consistent.
-        (Remove any values that are inconsistent with a variable's unary
-         constraints; in this case, the length of the word.)
-        """
-        raise NotImplementedError
+        for key, value in self.domains.items():
+            length = key.length
+            junk = {item for item in value if len(item) != length}
+            self.domains[key] -= junk
 
     def revise(self, x, y):
-        """
-        Make variable `x` arc consistent with variable `y`.
-        To do so, remove values from `self.domains[x]` for which there is no
-        possible corresponding value for `y` in `self.domains[y]`.
+        overlap_check = self.crossword.overlaps[x, y]:
+        if not overlap_check:
+            return False
+        xi, yi = overlap_check
+        junk = {xitem for xitem in self.domains[x] for yitem in self.domains[y] if xitem[xi] != yitem[yi]}
+        if len(junk) != 0:
+            self.domains[x] -= junk
+            return True
+        else:
+            return False
 
-        Return True if a revision was made to the domain of `x`; return
-        False if no revision was made.
-        """
-        raise NotImplementedError
 
     def ac3(self, arcs=None):
-        """
-        Update `self.domains` such that each variable is arc consistent.
-        If `arcs` is None, begin with initial list of all arcs in the problem.
-        Otherwise, use `arcs` as the initial list of arcs to make consistent.
+        if not arcs:
+            variables = self.crossword.variables
+            arcs = permutations(variables, 2)
+            queue = deque(arcs)
+        while queue:
+            current = queue.popleft()
+            x, y = current
+            check = self.revise(x, y)
+            if self.domains[x] == set():
+                return False
+            neighbors = self.crossword.neighbors(x)
+            if not check or not neighbors:
+                continue
+            queue.extend(((var, x) for var in neighbors if var != y))
 
-        Return True if arc consistency is enforced and no domains are empty;
-        return False if one or more domains end up empty.
-        """
-        raise NotImplementedError
+
 
     def assignment_complete(self, assignment):
-        """
-        Return True if `assignment` is complete (i.e., assigns a value to each
-        crossword variable); return False otherwise.
-        """
-        raise NotImplementedError
+        all_var = self.crossword.words
+        assigned_var = set(assignment.keys())
+        complete = True if (all_var - assigned_var) == set() else False
+        if complete:
+            return True
+        return False
+
+
+
 
     def consistent(self, assignment):
-        """
-        Return True if `assignment` is consistent (i.e., words fit in crossword
-        puzzle without conflicting characters); return False otherwise.
-        """
-        raise NotImplementedError
+        unique = True if len(set(assignment.values())) == len(assignment) else False
+        if not unique:
+            return False
+        length_check = all(var.length == len(word) for var, word in assignment.items())
+        if not length_check:
+            return False
+        neighbors = [
+            ((x, y), overlap)
+            for x, y in combinations(assignment.keys(), 2)
+            if (p := self.crossword.overlaps[x, y]) is not None
+        ]
+        for (x, y), (i, j) in neighbors:
+            x_value = assignment[x][i]
+            y_value = assignment[y][j]
+            if x_value != y_value:
+                return False
+        return True
 
     def order_domain_values(self, var, assignment):
-        """
-        Return a list of values in the domain of `var`, in order by
-        the number of values they rule out for neighboring variables.
-        The first value in the list, for example, should be the one
-        that rules out the fewest values among the neighbors of `var`.
-        """
-        raise NotImplementedError
+        unordered = [x for x in self.domains[var]]
+        score = dict.fromkeys(unordered, 0)
+
 
     def select_unassigned_variable(self, assignment):
         """
