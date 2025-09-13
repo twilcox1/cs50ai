@@ -102,12 +102,18 @@ class CrosswordCreator():
             self.domains[key] -= junk
 
     def revise(self, x, y):
-        overlap_check = self.crossword.overlaps[x, y]:
+        overlap_check = self.crossword.overlaps[x, y]
         if not overlap_check:
             return False
         xi, yi = overlap_check
-        junk = {xitem for xitem in self.domains[x] for yitem in self.domains[y] if xitem[xi] != yitem[yi]}
-        if len(junk) != 0:
+        junk = set()
+        print("domain values for", x)
+        for xword in self.domains[x]:
+            print(type(xword), xword)
+            print(xword)
+            if not any(xword[xi] == yword[yi] for yword in self.domains[y]):
+                junk.add(xword)
+        if junk:
             self.domains[x] -= junk
             return True
         else:
@@ -115,10 +121,12 @@ class CrosswordCreator():
 
 
     def ac3(self, arcs=None):
-        if not arcs:
+        if arcs == []:
+            return True
+        if arcs is None:
             variables = self.crossword.variables
-            arcs = permutations(variables, 2)
-            queue = deque(arcs)
+            arcs = list(permutations(variables, 2))
+        queue = deque(arcs)
         while queue:
             current = queue.popleft()
             x, y = current
@@ -129,17 +137,12 @@ class CrosswordCreator():
             if not check or not neighbors:
                 continue
             queue.extend(((var, x) for var in neighbors if var != y))
+        return True
 
 
 
     def assignment_complete(self, assignment):
-        all_var = self.crossword.words
-        assigned_var = set(assignment.keys())
-        complete = True if (all_var - assigned_var) == set() else False
-        if complete:
-            return True
-        return False
-
+        return set(assignment.keys()) == set(self.crossword.variables)
 
 
 
@@ -153,7 +156,7 @@ class CrosswordCreator():
         neighbors = [
             ((x, y), overlap)
             for x, y in combinations(assignment.keys(), 2)
-            if (p := self.crossword.overlaps[x, y]) is not None
+            if (overlap := self.crossword.overlaps[x, y]) is not None
         ]
         for (x, y), (i, j) in neighbors:
             x_value = assignment[x][i]
@@ -163,30 +166,61 @@ class CrosswordCreator():
         return True
 
     def order_domain_values(self, var, assignment):
+        for k in self.domains.keys():
+            print(type(k), k)
+        print(self.domains[var])
         unordered = [x for x in self.domains[var]]
         score = dict.fromkeys(unordered, 0)
+        neighbors = {x for x in self.crossword.neighbors(var) if x not in assignment}
+        if not neighbors:
+            return unordered
+        n = {i: self.domains[i] for i in neighbors}
+        print("!~", n, "~!")
+        for variable in unordered:
+            for key, value in n.items():
+                overlap = self.crossword.overlaps[var, key]
+                if overlap is None:
+                    continue
+                og, ng = overlap
+                for string in value:  # string is a word from neighbor's domain
+                    if string[ng] != variable[og]:
+                        score[variable] += 1
+                else:
+                    continue
+        return sorted(unordered, key=lambda w: score[w])
+    
+
+
 
 
     def select_unassigned_variable(self, assignment):
-        """
-        Return an unassigned variable not already part of `assignment`.
-        Choose the variable with the minimum number of remaining values
-        in its domain. If there is a tie, choose the variable with the highest
-        degree. If there is a tie, any of the tied variables are acceptable
-        return values.
-        """
-        raise NotImplementedError
+        print(self.crossword.variables)
+        print(assignment)
+        unassigned = [x for x in self.crossword.variables if x not in assignment.keys()]
+        print("~~~",unassigned,"~~~")
+        score = {}
+        for i in unassigned:
+            score[i] = len(self.domains[i])
+        print("unassigned",unassigned)
+        print("score",score)
+        return min(unassigned, key=lambda w: score[w])
+
 
     def backtrack(self, assignment):
-        """
-        Using Backtracking Search, take as input a partial assignment for the
-        crossword and return a complete assignment if possible to do so.
+        if self.assignment_complete(assignment):
+            return assignment
+        
+        variable = self.select_unassigned_variable(assignment)
+        for i in self.order_domain_values(variable, assignment):
+            if self.consistent(assignment):
+                assignment[variable] = i
+                result = self.backtrack(assignment)
+                if result: 
+                    return result
+            assignment.pop(var)
+        return None
+        
 
-        `assignment` is a mapping from variables (keys) to words (values).
-
-        If no assignment is possible, return None.
-        """
-        raise NotImplementedError
 
 
 def main():
