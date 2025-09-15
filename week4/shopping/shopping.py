@@ -1,5 +1,6 @@
 import csv
 import sys
+import calendar
 
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
@@ -32,61 +33,78 @@ def main():
 
 
 def load_data(filename):
-    """
-    Load shopping data from a CSV file `filename` and convert into a list of
-    evidence lists and a list of labels. Return a tuple (evidence, labels).
-
-    evidence should be a list of lists, where each list contains the
-    following values, in order:
-        - Administrative, an integer
-        - Administrative_Duration, a floating point number
-        - Informational, an integer
-        - Informational_Duration, a floating point number
-        - ProductRelated, an integer
-        - ProductRelated_Duration, a floating point number
-        - BounceRates, a floating point number
-        - ExitRates, a floating point number
-        - PageValues, a floating point number
-        - SpecialDay, a floating point number
-        - Month, an index from 0 (January) to 11 (December)
-        - OperatingSystems, an integer
-        - Browser, an integer
-        - Region, an integer
-        - TrafficType, an integer
-        - VisitorType, an integer 0 (not returning) or 1 (returning)
-        - Weekend, an integer 0 (if false) or 1 (if true)
-
-    labels should be the corresponding list of labels, where each label
-    is 1 if Revenue is true, and 0 otherwise.
-    """
-    raise NotImplementedError
+    data = []
+    labels = []
+    with open(filename, newline="") as f:
+        reader = csv.DictReader(f)
+        convert = converters()
+        for row in reader:
+            converted = [convert[col](row[col]) if col in convert else row[col] for col in reader.fieldnames]
+            print(converted)
+            data.append(converted[:-1])
+            labels.append(converted[-1])
+    return data, labels
 
 
 def train_model(evidence, labels):
-    """
-    Given a list of evidence lists and a list of labels, return a
-    fitted k-nearest neighbor model (k=1) trained on the data.
-    """
-    raise NotImplementedError
-
+    print("trainmodellabels", labels)
+    k = KNeighborsClassifier(n_neighbors=1)
+    k.fit(evidence, labels)
+    return k
 
 def evaluate(labels, predictions):
-    """
-    Given a list of actual labels and a list of predicted labels,
-    return a tuple (sensitivity, specificity).
+    true_positive = 0
+    true_negative = 0
+    total_positive = 0
+    total_negative = 0
+    for l, p in zip(labels, predictions):
+        if l == 1:
+            total_positive += 1
+            if p == 1:
+                true_positive += 1
+        else:
+            total_negative += 1
+            if p == 0:
+                true_negative += 1
+    sensitivity = true_positive / total_positive if total_positive else 0
+    specificity = true_negative / total_negative if total_negative else 0
+    return sensitivity, specificity
 
-    Assume each label is either a 1 (positive) or 0 (negative).
 
-    `sensitivity` should be a floating-point value from 0 to 1
-    representing the "true positive rate": the proportion of
-    actual positive labels that were accurately identified.
+def converters():
+    converter = {
+        "Administrative": int,
+        "Informational": int,
+        "ProductRelated": int,
+        "Month": convert_month,
+        "OperatingSystems": int,
+        "Browser": int,
+        "Region": int,
+        "TrafficType": convert_bool,
+        "VisitorType": convert_bool, 
+        "Weekend": convert_bool,
+        "Administrative_Duration": float,
+        "Informational_Duration": float,
+        "ProductRelated_Duration": float,
+        "BounceRates": float,
+        "ExitRates": float,
+        "PageValues": float,
+        "SpecialDay": float,
+        "Revenue": convert_bool
 
-    `specificity` should be a floating-point value from 0 to 1
-    representing the "true negative rate": the proportion of
-    actual negative labels that were accurately identified.
-    """
-    raise NotImplementedError
+    }
+    return converter
 
+
+def convert_month(month):
+    if month in ("June", "june"):
+        return 5
+    month_lookup = {month: i - 1 for i, month in enumerate(calendar.month_abbr) if month}
+    return month_lookup[month]
+
+def convert_bool(v):
+    v = v.strip().lower()
+    return 1 if v in ("true", "returning_visitor") else 0
 
 if __name__ == "__main__":
     main()

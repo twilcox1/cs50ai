@@ -1,3 +1,10 @@
+
+
+
+
+
+
+
 class Variable():
 
     ACROSS = "across"
