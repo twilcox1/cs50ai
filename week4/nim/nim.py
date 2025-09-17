@@ -97,42 +97,33 @@ class NimAI():
         self.update_q_value(old_state, action, old, reward, best_future)
 
     def get_q_value(self, state, action):
-        """
-        Return the Q-value for the state `state` and the action `action`.
-        If no Q-value exists yet in `self.q`, return 0.
-        """
-        raise NotImplementedError
+        state_tup = tuple(state)
+        action_tup = tuple(action)
+        qq = self.q[state_tup, action_tup]
+        if qq:
+            return qq
+        else:
+            return 0
+        
 
     def update_q_value(self, state, action, old_q, reward, future_rewards):
-        """
-        Update the Q-value for the state `state` and the action `action`
-        given the previous Q-value `old_q`, a current reward `reward`,
-        and an estiamte of future rewards `future_rewards`.
+        new_value_estimate = reward + future_rewards
+        new_q = old_q + self.alpha * (new_value_estimate - old_q)
+        state_tup = tuple(state)
+        action_tup = tuple(action)
+        self.q[state_tup, action_tup] = new_q
 
-        Use the formula:
 
-        Q(s, a) <- old value estimate
-                   + alpha * (new value estimate - old value estimate)
-
-        where `old value estimate` is the previous Q-value,
-        `alpha` is the learning rate, and `new value estimate`
-        is the sum of the current reward and estimated future rewards.
-        """
-        raise NotImplementedError
 
     def best_future_reward(self, state):
-        """
-        Given a state `state`, consider all possible `(state, action)`
-        pairs available in that state and return the maximum of all
-        of their Q-values.
+        all_actions = Nim.available_actions(state)
+        q_values = [self.q.get_q_values(state, action) for action in all_actions]
+        return max(q_values) if q_values else 0
 
-        Use 0 as the Q-value if a `(state, action)` pair has no
-        Q-value in `self.q`. If there are no available actions in
-        `state`, return 0.
-        """
-        raise NotImplementedError
 
     def choose_action(self, state, epsilon=True):
+
+        best = max(all_actions, key=lambda action: self.get_q_value(state, action))
         """
         Given a state `state`, return an action `(i, j)` to take.
 
