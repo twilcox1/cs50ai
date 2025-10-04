@@ -73,11 +73,12 @@ def load_data(data_dir):
 
 def get_model():
     model = tf.keras.models.Sequential()
-    model.add(tf.keras.layers.Conv2D(filters=32, kernel_size=3, activation='relu', input_shape=(IMG_HEIGHT,IMG_WIDTH,3)))
+    model.add(tf.keras.layers.Conv2D(filters=32, kernel_size=3, padding="same", input_shape=(IMG_HEIGHT,IMG_WIDTH,3)))
+    model.add(tf.keras.layers.ReLU())
     model.add(tf.keras.layers.MaxPooling2D(pool_size=3))
     model.add(tf.keras.layers.Flatten())
-    model.add(tf.keras.layers.Dense(32, activation='relu'))
-    # model.add(tf.keras.layers.Dropout(0.5))
+    model.add(tf.keras.layers.Dense(128, activation='relu'))
+    model.add(tf.keras.layers.Dropout(0.35))
     model.add(tf.keras.layers.Dense(NUM_CATEGORIES, activation='softmax'))
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
     return model
